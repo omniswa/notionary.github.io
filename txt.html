@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>txt.sh — Share Plain Text Instantly</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #08080A;
+      --surface: #111114;
+      --elevated: #1A1A1F;
+      --border: #242428;
+      --border-hover: #35353B;
+      --fg: #EAEAEC;
+      --fg-sec: #A0A0A8;
+      --muted: #5C5C66;
+      --accent: #D4943C;
+      --accent-hover: #E4A850;
+      --accent-bg: rgba(212, 148, 60, 0.08);
+      --accent-border: rgba(212, 148, 60, 0.22);
+      --success: #3DD68C;
+      --success-bg: rgba(61, 214, 140, 0.08);
+      --error: #E85D5D;
+      --error-bg: rgba(232, 93, 93, 0.08);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Space Grotesk', system-ui, sans-serif;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100dvh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Ambient background */
+    .bg-ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .bg-ambient::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      left: -10%;
+      width: 55%;
+      height: 55%;
+      background: radial-gradient(circle, rgba(212, 148, 60, 0.035) 0%, transparent 70%);
+      animation: floatOrb 25s ease-in-out infinite;
+    }
+
+    .bg-ambient::after {
+      content: '';
+      position: absolute;
+      bottom: -25%;
+      right: -15%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(212, 148, 60, 0.025) 0%, transparent 70%);
+      animation: floatOrb 30s ease-in-out infinite reverse;
+    }
+
+    @keyframes floatOrb {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      33% {
+        transform: translate(8%, 12%) scale(1.05);
+      }
+
+      66% {
+        transform: translate(-5%, -8%) scale(0.95);
+      }
+    }
+
+    /* App wrapper */
+    .app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8, 8, 10, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--fg);
+    }
+
+    .logo-icon {
+      width: 30px;
+      height: 30px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-icon svg {
+      width: 16px;
+      height: 16px;
+      color: #08080A;
+    }
+
+    .logo-text {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg-sec);
+      transition: all 0.2s var(--ease);
+      white-space: nowrap;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:hover {
+      background: var(--elevated);
+      color: var(--fg);
+      border-color: var(--border-hover);
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #08080A;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: #08080A;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--muted);
+      padding: 8px;
+    }
+
+    .btn-ghost:hover {
+      color: var(--fg);
+      background: var(--surface);
+      border-color: var(--border);
+    }
+
+    .btn-ghost.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
+    }
+
+    /* Main */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-wrap: wrap;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--elevated);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+    }
+
+    .toolbar-group .btn {
+      border: none;
+      background: transparent;
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+
+    .toolbar-group .btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .toolbar-group .btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--fg);
+    }
+
+    .toolbar-sep {
+      width: 1px;
+      height: 22px;
+      background: var(--border);
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+
+    .toolbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Editor area */
+    .editor-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      min-height: 0;
+    }
+
+    .editor-inner {
+      flex: 1;
+      display: flex;
+      position: relative;
+      min-height: 0;
+    }
+
+    /* Line numbers */
+    .line-nums {
+      width: 50px;
+      flex-shrink: 0;
+      padding: 18px 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: right;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .line-nums-inner {
+      padding-right: 14px;
+      transition: transform 0.05s linear;
+    }
+
+    .line-nums .ln {
+      display: block;
+      height: 1.6em;
+      line-height: 1.6;
+    }
+
+    .line-nums .ln.active-ln {
+      color: var(--fg-sec);
+    }
+
+    /* Textarea */
+    #editor {
+      flex: 1;
+      resize: none;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      padding: 18px 20px;
+      tab-size: 4;
+      -moz-tab-size: 4;
+      white-space: pre;
+      overflow: auto;
+      min-height: 0;
+      caret-color: var(--accent);
+    }
+
+    #editor::placeholder {
+      color: var(--muted);
+    }
+
+    #editor::selection {
+      background: rgba(212, 148, 60, 0.22);
+    }
+
+    #editor::-moz-selection {
+      background: rgba(212, 148, 60, 0.22);
+    }
+
+    /* Preview */
+    #preview {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      display: none;
+      min-height: 0;
+    }
+
+    #preview.md-preview {
+      font-family: var(--sans);
+      font-size: 0.95rem;
+      line-height: 1.75;
+      color: var(--fg);
+    }
+
+    #preview.text-preview {
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      color: var(--fg-sec);
+    }
+
+    #preview.visible {
+      display: block;
+    }
+
+    /* Markdown styles */
+    .md-preview h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      margin: 1.5em 0 0.5em;
+      letter-spacing: -0.02em;
+      color: var(--fg);
+    }
+
+    .md-preview h2 {
+      font-size: 1.45rem;
+      font-weight: 600;
+      margin: 1.3em 0 0.4em;
+      letter-spacing: -0.015em;
+      color: var(--fg);
+    }
+
+    .md-preview h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 1.1em 0 0.35em;
+      color: var(--fg);
+    }
+
+    .md-preview h4,
+    .md-preview h5,
+    .md-preview h6 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 1em 0 0.3em;
+      color: var(--fg-sec);
+    }
+
+    .md-preview h1::after {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 2px;
+      background: var(--accent);
+      margin-top: 10px;
+      border-radius: 1px;
+    }
+
+    .md-preview p {
+      margin: 0.7em 0;
+    }
+
+    .md-preview a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-border);
+      transition: border-color 0.2s;
+    }
+
+    .md-preview a:hover {
+      border-bottom-color: var(--accent);
+    }
+
+    .md-preview strong {
+      color: var(--fg);
+      font-weight: 600;
+    }
+
+    .md-preview em {
+      color: var(--fg-sec);
+    }
+
+    .md-preview code {
+      font-family: var(--mono);
+      font-size: 0.84em;
+      background: var(--elevated);
+      padding: 2px 7px;
+      border-radius: 4px;
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+
+    .md-preview pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+
+    .md-preview pre code {
+      background: none;
+      padding: 0;
+      border: none;
+      color: var(--fg-sec);
+      font-size: 0.84rem;
+    }
+
+    .md-preview blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 8px 16px;
+      margin: 1em 0;
+      background: var(--accent-bg);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      color: var(--fg-sec);
+    }
+
+    .md-preview blockquote p {
+      margin: 0.3em 0;
+    }
+
+    .md-preview ul,
+    .md-preview ol {
+      padding-left: 1.6em;
+      margin: 0.7em 0;
+    }
+
+    .md-preview li {
+      margin: 0.3em 0;
+    }
+
+    .md-preview li::marker {
+      color: var(--muted);
+    }
+
+    .md-preview hr {
+      border: none;
+      height: 1px;
+      background: var(--border);
+      margin: 2em 0;
+    }
+
+    .md-preview img {
+      max-width: 100%;
+      border-radius: var(--radius);
+      margin: 1em 0;
+    }
+
+    .md-preview table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+      font-size: 0.9rem;
+    }
+
+    .md-preview th,
+    .md-preview td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .md-preview th {
+      background: var(--elevated);
+      font-weight: 600;
+      color: var(--fg);
+    }
+
+    .md-preview td {
+      color: var(--fg-sec);
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 6px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      flex-shrink: 0;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s var(--ease);
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 460px;
+      transform: translateY(12px) scale(0.97);
+      transition: transform 0.3s var(--ease);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-overlay.open .modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .modal-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .share-url-wrap {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .share-url-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      outline: none;
+      min-width: 0;
+    }
+
+    .share-url-input:focus {
+      border-color: var(--accent-border);
+    }
+
+    .modal-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      line-height: 1.5;
+    }
+
+    .modal-hint svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      color: var(--fg-sec);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 10px 18px;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.82rem;
+      color: var(--fg);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: toastIn 0.3s var(--ease);
+      pointer-events: auto;
+    }
+
+    .toast.success {
+      border-color: rgba(61, 214, 140, 0.3);
+    }
+
+    .toast.success .toast-icon {
+      color: var(--success);
+    }
+
+    .toast.error {
+      border-color: rgba(232, 93, 93, 0.3);
+    }
+
+    .toast.error .toast-icon {
+      color: var(--error);
+    }
+
+    .toast-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .toast.out {
+      animation: toastOut 0.25s var(--ease) forwards;
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes toastOut {
+      to {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.95);
+      }
+    }
+
+    /* Read-only banner */
+    .readonly-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--accent-bg);
+      border-bottom: 1px solid var(--accent-border);
+      font-size: 0.82rem;
+      color: var(--accent);
+    }
+
+    .readonly-banner svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .readonly-banner .new-btn {
+      margin-left: auto;
+      padding: 4px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #08080A;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: background 0.2s;
+    }
+
+    .readonly-banner .new-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Empty state */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .empty-state svg {
+      width: 40px;
+      height: 40px;
+      opacity: 0.3;
+      margin-bottom: 4px;
+    }
+
+    .empty-state p {
+      max-width: 300px;
+      line-height: 1.5;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--border-hover);
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Mobile */
+    @media (max-width: 640px) {
+      header {
+        padding: 12px 12px;
+      }
+
+      .logo-text {
+        font-size: 1.05rem;
+      }
+
+      .toolbar {
+        padding: 8px 12px;
+        gap: 4px;
+      }
+
+      .btn {
+        padding: 7px 10px;
+        font-size: 0.78rem;
+        gap: 5px;
+      }
+
+      .btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .btn .btn-label {
+        display: none;
+      }
+
+      .toolbar-sep {
+        margin: 0 2px;
+      }
+
+      .line-nums {
+        width: 38px;
+      }
+
+      .line-nums-inner {
+        padding-right: 10px;
+      }
+
+      #editor {
+        padding: 14px 14px;
+        font-size: 0.84rem;
+      }
+
+      #preview {
+        padding: 18px 14px;
+      }
+
+      .status-bar {
+        padding: 5px 12px;
+        gap: 10px;
+        font-size: 0.68rem;
+      }
+
+      .modal {
+        padding: 22px;
+      }
+
+      .share-url-wrap {
+        flex-direction: column;
+      }
+
+      .readonly-banner {
+        padding: 8px 12px;
+        font-size: 0.78rem;
+      }
+    }
+
+    /* Tablet+ */
+    @media (min-width: 641px) {
+      .editor-inner.split #editor {
+        flex: 1;
+        border-right: 1px solid var(--border);
+      }
+
+      .editor-inner.split #preview {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-ambient" aria-hidden="true"></div>
+
+  <div class="app">
+    <header>
+      <a href="#" class="logo" id="logo-link" aria-label="txt.sh home">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7V4h16v3" />
+            <path d="M9 20h6" />
+            <path d="M12 4v16" />
+          </svg>
+        </div>
+        <div class="logo-text">txt<span>.sh</span></div>
+      </a>
+      <div class="header-actions">
+        <button class="btn btn-primary" id="share-btn" title="Share note (Ctrl+Shift+S)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
+          </svg>
+          <span class="btn-label">Share</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="readonly-banner" id="readonly-banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+      <span>Read-only view</span>
+      <button class="new-btn" id="new-note-btn">New note</button>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+      <div class="toolbar-group">
+        <button class="btn active" id="mode-edit" title="Edit (Ctrl+E)" aria-label="Edit mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          <span class="btn-label">Edit</span>
+        </button>
+        <button class="btn" id="mode-preview" title="Preview (Ctrl+P)" aria-label="Preview mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span class="btn-label">Preview</span>
+        </button>
+        <button class="btn" id="mode-split" title="Split view (Ctrl+D)" aria-label="Split view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="12" y1="3" x2="12" y2="21" />
+          </svg>
+          <span class="btn-label">Split</span>
+        </button>
+      </div>
+      <div class="toolbar-sep"></div>
+      <div class="toolbar-group">
+        <button class="btn active" id="fmt-text" title="Plain text" aria-label="Plain text format">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 7 4 4 20 4 20 7" />
+            <line x1="9.5" y1="20" x2="14.5" y2="20" />
+            <line x1="12" y1="4" x2="12" y2="20" />
+          </svg>
+        </button>
+        <button class="btn" id="fmt-md" title="Markdown" aria-label="Markdown format">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
+            <path d="M8 13h2l1.5 3L13 13h2" />
+            <path d="M8 17h8" />
+          </svg>
+        </button>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-ghost" id="copy-btn" title="Copy to clipboard (Ctrl+Shift+C)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          <span class="btn-label">Copy</span>
+        </button>
+        <button class="btn btn-ghost" id="clear-btn" title="Clear editor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <line x1="10" y1="11" x2="10" y2="17" />
+            <line x1="14" y1="11" x2="14" y2="17" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <main>
+      <div class="editor-wrap">
+        <div class="editor-inner" id="editor-inner">
+          <div class="line-nums" id="line-nums" aria-hidden="true">
+            <div class="line-nums-inner" id="line-nums-inner">
+              <span class="ln active-ln">1</span>
+            </div>
+          </div>
+          <textarea id="editor" placeholder="Start typing..." spellcheck="false" autofocus aria-label="Text editor"></textarea>
+          <div id="preview" role="document" aria-label="Preview"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="status-bar">
+      <div class="status-item">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Ready</span>
+      </div>
+      <div class="status-item" id="stat-chars">0 chars</div>
+      <div class="status-item" id="stat-words">0 words</div>
+      <div class="status-item" id="stat-lines">1 line</div>
+    </footer>
+  </div>
+
+  <!-- Share modal -->
+  <div class="modal-overlay" id="share-modal" role="dialog" aria-modal="true" aria-label="Share note">
+    <div class="modal">
+      <div class="modal-title">Share this note</div>
+      <div class="modal-desc">Anyone with this link can read your note. The content is encoded directly in the URL.</div>
+      <div class="share-url-wrap">
+        <input type="text" class="share-url-input" id="share-url-input" readonly aria-label="Share URL">
+        <button class="btn btn-primary" id="copy-share-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          Copy
+        </button>
+      </div>
+      <div class="modal-hint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+        <span>Links work as long as your browser supports them. Very long texts may produce URLs that some platforms won't accept.</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="close-modal-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // --- State ---
+      const state = {
+        mode: 'edit', // edit | preview | split
+        format: 'text', // text | md
+        isReadonly: false,
+        lineCount: 1
+      };
+
+      // --- DOM ---
+      const $ = (s) => document.querySelector(s);
+      const editor = $('#editor');
+      const preview = $('#preview');
+      const lineNumsInner = $('#line-nums-inner');
+      const lineNums = $('#line-nums');
+      const editorInner = $('#editor-inner');
+      const shareBtn = $('#share-btn');
+      const shareModal = $('#share-modal');
+      const shareUrlInput = $('#share-url-input');
+      const copyShareBtn = $('#copy-share-btn');
+      const closeModalBtn = $('#close-modal-btn');
+      const copyBtn = $('#copy-btn');
+      const clearBtn = $('#clear-btn');
+      const newNoteBtn = $('#new-note-btn');
+      const readonlyBanner = $('#readonly-banner');
+      const logoLink = $('#logo-link');
+      const toolbar = $('#toolbar');
+      const statusDot = $('#status-dot');
+      const statusText = $('#status-text');
+      const statChars = $('#stat-chars');
+      const statWords = $('#stat-words');
+      const statLines = $('#stat-lines');
+      const toastContainer = $('#toast-container');
+
+      const modeButtons = {
+        edit: $('#mode-edit'),
+        preview: $('#mode-preview'),
+        split: $('#mode-split')
+      };
+      const fmtButtons = {
+        text: $('#fmt-text'),
+        md: $('#fmt-md')
+      };
+
+      // --- Utilities ---
+      function debounce(fn, ms) {
+        let t;
+        return function(...args) {
+          clearTimeout(t);
+          t = setTimeout(() => fn.apply(this, args), ms);
+        };
+      }
+
+      function showToast(msg, type = 'success') {
+        const iconSvg = type === 'success' ?
+          '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' :
+          '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.innerHTML = `${iconSvg}<span>${msg}</span>`;
+        toastContainer.appendChild(el);
+        setTimeout(() => {
+          el.classList.add('out');
+          el.addEventListener('animationend', () => el.remove());
+        }, 2500);
+      }
+
+      async function copyText(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Fallback
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.cssText = 'position:fixed;left:-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          return ok;
+        }
+      }
+
+      // --- Line Numbers ---
+      function updateLineNumbers() {
+        const text = editor.value;
+        const lines = text.split('\n');
+        const count = lines.length;
+
+        if (count !== state.lineCount) {
+          state.lineCount = count;
+          let html = '';
+          for (let i = 1; i <= count; i++) {
+            html += `<span class="ln">${i}</span>`;
+          }
+          lineNumsInner.innerHTML = html;
+        }
+
+        // Highlight active line
+        const pos = editor.selectionStart;
+        const beforeCursor = text.substring(0, pos);
+        const activeLine = beforeCursor.split('\n').length;
+        const lnEls = lineNumsInner.querySelectorAll('.ln');
+        lnEls.forEach((el, i) => {
+          el.classList.toggle('active-ln', i + 1 === activeLine);
+        });
+      }
+
+      function syncLineScroll() {
+        lineNumsInner.style.transform = `translateY(-${editor.scrollTop}px)`;
+      }
+
+      // --- Stats ---
+      function updateStats() {
+        const text = editor.value;
+        const chars = text.length;
+        const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+        const lines = text.split('\n').length;
+        statChars.textContent = `${chars.toLocaleString()} char${chars !== 1 ? 's' : ''}`;
+        statWords.textContent = `${words.toLocaleString()} word${words !== 1 ? 's' : ''}`;
+        statLines.textContent = `${lines} line${lines !== 1 ? 's' : ''}`;
+      }
+
+      const debouncedStats = debounce(updateStats, 200);
+
+      // --- Preview ---
+      function updatePreview() {
+        const text = editor.value;
+        if (state.format === 'md') {
+          preview.className = 'md-preview visible';
+          try {
+            preview.innerHTML = marked.parse(text, { breaks: true, gfm: true });
+          } catch {
+            preview.textContent = text;
+          }
+        } else {
+          preview.className = 'text-preview visible';
+          preview.textContent = text;
+        }
+      }
+
+      const debouncedPreview = debounce(updatePreview, 150);
+
+      // --- View Mode ---
+      function setMode(mode) {
+        state.mode = mode;
+        Object.entries(modeButtons).forEach(([k, btn]) => btn.classList.toggle('active', k === mode));
+
+        editorInner.classList.remove('split');
+        editor.style.display = '';
+        lineNums.style.display = '';
+        preview.classList.remove('visible');
+
+        if (mode === 'edit') {
+          // Default: editor visible, preview hidden
+        } else if (mode === 'preview') {
+          editor.style.display = 'none';
+          lineNums.style.display = 'none';
+          preview.classList.add('visible');
+          updatePreview();
+        } else if (mode === 'split') {
+          editorInner.classList.add('split');
+          preview.classList.add('visible');
+          updatePreview();
+        }
+      }
+
+      // --- Format ---
+      function setFormat(fmt) {
+        state.format = fmt;
+        Object.entries(fmtButtons).forEach(([k, btn]) => btn.classList.toggle('active', k === fmt));
+        if (state.mode !== 'edit') updatePreview();
+      }
+
+      // --- Share ---
+      function openShareModal() {
+        const text = editor.value;
+        if (!text.trim()) {
+          showToast('Write something first', 'error');
+          return;
+        }
+
+        try {
+          const encoded = btoa(unescape(encodeURIComponent(text)));
+          const url = window.location.origin + window.location.pathname + '#' + encoded;
+          shareUrlInput.value = url;
+          shareModal.classList.add('open');
+          // Select all text in input
+          setTimeout(() => {
+            shareUrlInput.select();
+            shareUrlInput.focus();
+          }, 100);
+        } catch (e) {
+          showToast('Failed to encode text', 'error');
+        }
+      }
+
+      function closeShareModal() {
+        shareModal.classList.remove('open');
+      }
+
+      // --- Read Mode ---
+      function enterReadMode(text) {
+        state.isReadonly = true;
+        editor.value = text;
+        editor.readOnly = true;
+        editor.style.cursor = 'default';
+        shareBtn.style.display = 'none';
+        copyBtn.style.display = '';
+        clearBtn.style.display = 'none';
+        readonlyBanner.style.display = 'flex';
+        setMode('preview');
+        updateLineNumbers();
+        updateStats();
+        // Try markdown detection
+        if (detectMarkdown(text)) {
+          setFormat('md');
+        }
+      }
+
+      function detectMarkdown(text) {
+        const mdPatterns = [
+                /^#{1,6}\s/m, // Headers
+                /\*\*[^*]+\*\*/, // Bold
+                /\[[^\]]+\]\([^)]+\)/, // Links
+                /^[-*+]\s/m, // Unordered lists
+                /^\d+\.\s/m, // Ordered lists
+                /^```/m, // Code blocks
+                /^>\s/m, // Blockquotes
+                /\|.+\|/ // Tables
+            ];
+        let score = 0;
+        for (const p of mdPatterns) {
+          if (p.test(text)) score++;
+        }
+        return score >= 2;
+      }
+
+      function enterWriteMode() {
+        state.isReadonly = false;
+        editor.value = '';
+        editor.readOnly = false;
+        editor.style.cursor = '';
+        shareBtn.style.display = '';
+        copyBtn.style.display = '';
+        clearBtn.style.display = '';
+        readonlyBanner.style.display = 'none';
+        setMode('edit');
+        setFormat('text');
+        updateLineNumbers();
+        updateStats();
+        history.replaceState(null, '', window.location.pathname);
+        editor.focus();
+      }
+
+      // --- Event Bindings ---
+
+      // Editor input
+      editor.addEventListener('input', () => {
+        updateLineNumbers();
+        debouncedStats();
+        if (state.mode !== 'edit') debouncedPreview();
+        // Auto-detect markdown
+        if (state.format === 'text' && detectMarkdown(editor.value)) {
+          setFormat('md');
+        }
+      });
+
+      editor.addEventListener('scroll', syncLineScroll, { passive: true });
+
+      editor.addEventListener('click', updateLineNumbers);
+      editor.addEventListener('keyup', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+          updateLineNumbers();
+        }
+      });
+
+      // Tab support
+      editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = editor.selectionStart;
+          const end = editor.selectionEnd;
+          editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+          editor.selectionStart = editor.selectionEnd = start + 4;
+          editor.dispatchEvent(new Event('input'));
+        }
+      });
+
+      // Mode buttons
+      modeButtons.edit.addEventListener('click', () => setMode('edit'));
+      modeButtons.preview.addEventListener('click', () => setMode('preview'));
+      modeButtons.split.addEventListener('click', () => setMode('split'));
+
+      // Format buttons
+      fmtButtons.text.addEventListener('click', () => setFormat('text'));
+      fmtButtons.md.addEventListener('click', () => setFormat('md'));
+
+      // Share
+      shareBtn.addEventListener('click', openShareModal);
+      closeModalBtn.addEventListener('click', closeShareModal);
+      shareModal.addEventListener('click', (e) => { if (e.target === shareModal) closeShareModal(); });
+
+      copyShareBtn.addEventListener('click', async () => {
+        const ok = await copyText(shareUrlInput.value);
+        if (ok) {
+          showToast('Link copied to clipboard');
+          closeShareModal();
+        } else {
+          showToast('Failed to copy', 'error');
+        }
+      });
+
+      // Copy content
+      copyBtn.addEventListener('click', async () => {
+        const ok = await copyText(editor.value);
+        showToast(ok ? 'Content copied' : 'Failed to copy', ok ? 'success' : 'error');
+      });
+
+      // Clear
+      clearBtn.addEventListener('click', () => {
+        if (!editor.value.trim()) return;
+        editor.value = '';
+        editor.dispatchEvent(new Event('input'));
+        editor.focus();
+        showToast('Editor cleared');
+      });
+
+      // New note
+      newNoteBtn.addEventListener('click', enterWriteMode);
+
+      // Logo link
+      logoLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (state.isReadonly || editor.value.trim()) {
+          enterWriteMode();
+        }
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Escape closes modal
+        if (e.key === 'Escape' && shareModal.classList.contains('open')) {
+          closeShareModal();
+          return;
+        }
+
+        // Don't trigger shortcuts when typing in inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+          // Only handle Ctrl shortcuts in textarea
+          if (e.target === editor) {
+            if (e.ctrlKey || e.metaKey) {
+              if (e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                openShareModal();
+              } else if (e.shiftKey && e.key === 'C') {
+                e.preventDefault();
+                copyBtn.click();
+              } else if (!e.shiftKey && e.key === 'e') {
+                e.preventDefault();
+                setMode('edit');
+              } else if (!e.shiftKey && e.key === 'p') {
+                e.preventDefault();
+                setMode('preview');
+              } else if (!e.shiftKey && e.key === 'd') {
+                e.preventDefault();
+                setMode('split');
+              }
+            }
+          }
+          return;
+        }
+
+        // Global shortcuts (not in inputs)
+        if (e.ctrlKey || e.metaKey) {
+          if (e.key === 'e') {
+            e.preventDefault();
+            setMode('edit');
+          }
+          else if (e.key === 'p') {
+            e.preventDefault();
+            setMode('preview');
+          }
+          else if (e.key === 'd') {
+            e.preventDefault();
+            setMode('split');
+          }
+        }
+      });
+
+      // Hash change (back/forward navigation)
+      window.addEventListener('hashchange', () => {
+        loadFromHash();
+      });
+
+      // --- Init ---
+      function loadFromHash() {
+        const hash = window.location.hash.slice(1);
+        if (hash) {
+          try {
+            const text = decodeURIComponent(escape(atob(hash)));
+            enterReadMode(text);
+          } catch {
+            // Invalid hash, ignore
+            enterWriteMode();
+          }
+        } else {
+          enterWriteMode();
+        }
+      }
+
+      loadFromHash();
+    })();
+  </script>
+</body>
+
+</html>
